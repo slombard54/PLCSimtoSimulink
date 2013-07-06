@@ -93,6 +93,7 @@ block.RegBlockMethod('ProcessParameters',       @ProcessPrms);
 block.RegBlockMethod('PostPropagationSetup',    @DoPostPropSetup);
 block.RegBlockMethod('InitializeConditions', @InitializeConditions);
 block.RegBlockMethod('Start', @Start);
+block.RegBlockMethod('Update', @Update);
 block.RegBlockMethod('Terminate', @Terminate); % Required
 
 %end setup
@@ -164,6 +165,18 @@ block.Dwork(1).Data = 0;
 %Sim = get_param(block.BlockHandle, 'UserData');
 
 %end Start
+
+%%
+%% Update:
+%%   Functionality    : Called to update discrete states
+%%                      during simulation step
+%%   Required         : No
+%%   C-MEX counterpart: mdlUpdate
+%%
+function Update(block)
+Sim = get_param(block.BlockHandle, 'UserData');
+Sim.UpdateImages();
+%end Update
 
 
 %%

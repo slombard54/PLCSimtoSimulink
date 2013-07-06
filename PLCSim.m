@@ -56,8 +56,10 @@ function PLCSim_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % Choose default command line output for PLCSim
 handles.output = hObject;
-
-proj = PLCSimConnector.PCS7Project('C:\Program Files (x86)\SIEMENS\STEP7\S7Proj\KING_M_1\MID_CTRL\MID_CTRL.s7p');
+sys = get_param(gcs, 'Handle');
+connect = find_system(sys, 'MaskType','PLCSimConnect');
+projPath = get_param(connect, 'projectFile');
+proj = PLCSimConnector.PCS7Project(projPath);
 handles.project = proj;
 % Update handles structure
 guidata(hObject, handles);
