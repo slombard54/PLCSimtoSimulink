@@ -16,6 +16,10 @@ function PLCSim_Connect(block)
 %% S-function such as ports, parameters, etc. Do not add any other
 %% calls to the main body of the function.
 %%
+NET.addAssembly ('C:\Users\slombard.KINGDOM\Documents\Visual Studio 2010\Projects\PLCSimConnector\PLCSimConnector\bin\Debug\PLCSimConnector.dll');
+plcSim = PLCSimConnector.PLCSim;
+NET.disableAutoRelease(plcSim);
+
 setup(block);
 
 %endfunction
@@ -74,9 +78,7 @@ block.SampleTimes = [0 0];
 %    'CustomSimState',  < Has GetSimState and SetSimState methods
 %    'DisallowSimState' < Error out when saving or restoring the model sim state
 block.SimStateCompliance = 'DefaultSimState';
-
-NET.addAssembly ('C:\Users\slombard.KINGDOM\Documents\Visual Studio 2010\Projects\PLCSimConnector\PLCSimConnector\bin\Debug\PLCSimConnector.dll');
-Sim = PLCSimConnector.PLCSim;
+Sim = PLCSimConnector.SimulatedPLC(plcSim);
 set_param(block.BlockHandle, 'UserData', Sim);
 
 %% -----------------------------------------------------------------
@@ -97,18 +99,20 @@ block.RegBlockMethod('Update', @Update);
 block.RegBlockMethod('Terminate', @Terminate); % Required
 
 %end setup
+end
 
 function CheckPrms(block)
-  projectName = block.DialogPrm(1).Data;
-  plcName = block.DialogPrm(2).Data;
+  %projectName = block.DialogPrm(1).Data;
+  %plcName = block.DialogPrm(2).Data;
 
-  if ~strcmp(projectName, '') && exist(projectName, 'file') == 0 
-    error('PLCSim:Param', 'Project File %s does not exist', projectName)
-  end
+  %if ~strcmp(projectName, '') && exist(projectName, 'file') == 0 
+  %  error('PLCSim:Param', 'Project File %s does not exist', projectName)
+  %end
   
-  if ~strcmp(plcName, '') && exist(plcName, 'file') == 0
-    error('PLCSim:Param', 'PLC File %s does not exist', plcName)
-  end
+  %if ~strcmp(plcName, '') && exist(plcName, 'file') == 0
+  %  error('PLCSim:Param', 'PLC File %s does not exist', plcName)
+  %end
+end
 
 %%
 %% PostPropagationSetup:
@@ -126,15 +130,19 @@ block.NumDworks = 1;
   block.Dwork(1).Complexity      = 'Real'; % real
   block.Dwork(1).UsedAsDiscState = true;
   
+  Sim = get_param(block.BlockHandle, 'UserData');
+  Sim.Project = PLCSimConnector.PCS7Project;
+  Sim.Project.File = block.DialogPrm(1).Data;
     %% Register all tunable parameters as runtime parameters.
-  block.AutoRegRuntimePrms;
+ % block.AutoRegRuntimePrms;
+end
 
 function ProcessPrms(block)
 
-  block.AutoUpdateRuntimePrms;
+  %block.AutoUpdateRuntimePrms;
  
 %endfunction
-
+end
 
 %%
 %% InitializeConditions:
@@ -148,7 +156,7 @@ function ProcessPrms(block)
 function InitializeConditions(block)
 block.Dwork(1).Data = 0;
 %end InitializeConditions
-
+end
 
 %%
 %% Start:
@@ -160,11 +168,12 @@ block.Dwork(1).Data = 0;
 %%
 function Start(block)
 Sim = get_param(block.BlockHandle, 'UserData');
-Sim.Connect();
+Sim.SimPLC.Connect();
 block.Dwork(1).Data = 0;
 %Sim = get_param(block.BlockHandle, 'UserData');
 
 %end Start
+end
 
 %%
 %% Update:
@@ -177,7 +186,7 @@ function Update(block)
 Sim = get_param(block.BlockHandle, 'UserData');
 Sim.UpdateImages();
 %end Update
-
+end
 
 %%
 %% Terminate:
@@ -187,6 +196,8 @@ Sim.UpdateImages();
 %%
 function Terminate(block)
 Sim = get_param(block.BlockHandle, 'UserData');
-Sim.Disconnect
+Sim.SimPLC.Disconnect();
+NET.enableAutoRelease(Sim.SimPLC);
 %end Terminate
-
+end
+end

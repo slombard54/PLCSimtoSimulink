@@ -54,8 +54,8 @@ block.InputPort(1).DirectFeedthrough = true;
 %block.OutputPort(1).SamplingMode = 'sample';
 
 % Register parameters
-block.NumDialogPrms     = 1;
-block.DialogPrmsTunable = {'Tunable'};
+block.NumDialogPrms     = 2;
+block.DialogPrmsTunable = {'Nontunable','Nontunable'};
 
 % Register sample times
 %  [0 offset]            : Continuous sample time
@@ -95,11 +95,11 @@ block.RegBlockMethod('Terminate', @Terminate); % Required
 %end setup
 
 function CheckPrms(block)
-  mu = block.DialogPrm(1).Data;
-  
-  if mu < 0 || mu > 10000
-    error('PLCSim:Write:Offset', 'Write offset out of range');
-  end
+ % mu = block.DialogPrm(1).Data;
+ % 
+ % if mu < 0 || mu > 10000
+ %   error('PLCSim:Write:Offset', 'Write offset out of range');
+ % end
 
 %%
 %% PostPropagationSetup:
@@ -153,6 +153,12 @@ function Start(block)
 sys = get_param(gcs, 'Handle');
 connect = find_system(sys, 'MaskType','PLCSimConnect');
 block.Dwork(1).Data = connect;
+Sim = get_param(block.Dwork(1).Data, 'UserData');
+point = Sim.AddDataPoint(block.DialogPrm(1).Data);
+if block.DialogPrm(2).Data == 1
+    point.DataPointScaling(100, 0,27648, 0);
+end 
+set_param(block.BlockHandle, 'UserData', point);
 
 %end Start
 
@@ -175,10 +181,8 @@ block.Dwork(1).Data = connect;
 %%   C-MEX counterpart: mdlUpdate
 %%
 function Update(block)
-send = NET.createArray ('System.Int32', 1);
-send(1) = typecast(single(block.InputPort(1).Data), 'int32');
-Sim = get_param(block.Dwork(1).Data, 'UserData');
-ret = Sim.WriteInputImage(block.DialogPrm(1).Data,send);
+Sim = get_param(block.BlockHandle, 'UserData');
+Sim.Value = block.InputPort(1).Data;
  
 %block.Dwork(1).Data = block.InputPort(1).Data;
 
@@ -202,7 +206,7 @@ function Derivatives(block)
 %%   C-MEX counterpart: mdlTerminate
 %%
 function Terminate(block)
-Sim = get_param(block.BlockHandle, 'UserData');
-delete(Sim);
+point = get_param(block.BlockHandle, 'UserData');
+delete(point);
 %end Terminate
 

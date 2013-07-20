@@ -54,8 +54,8 @@ block.OutputPort(1).Complexity  = 'Real';
 block.OutputPort(1).SamplingMode = 'sample';
 
 % Register parameters
-block.NumDialogPrms     = 1;
-block.DialogPrmsTunable = {'Tunable'};
+block.NumDialogPrms     = 2;
+block.DialogPrmsTunable = {'Nontunable','Nontunable'};
 
 % Register sample times
 %  [0 offset]            : Continuous sample time
@@ -94,11 +94,11 @@ block.RegBlockMethod('Terminate', @Terminate); % Required
 %end setup
 
 function CheckPrms(block)
-  mu = block.DialogPrm(1).Data;
+  %mu = block.DialogPrm(1).Data;
   
-  if mu < 0 || mu > 10000
-    error('PLCSim:Read:Offset', 'Read offset out of range');
-  end
+  %if mu < 0 || mu > 10000
+  %  error('PLCSim:Read:Offset', 'Read offset out of range');
+  %end
 
 %%
 %% PostPropagationSetup:
@@ -152,6 +152,12 @@ function Start(block)
 sys = get_param(gcs, 'Handle');
 connect = find_system(sys, 'MaskType','PLCSimConnect');
 block.Dwork(1).Data = connect;
+Sim = get_param(block.Dwork(1).Data, 'UserData');
+point = Sim.AddDataPoint(block.DialogPrm(1).Data);
+if block.DialogPrm(2).Data == 1
+    point.DataPointScaling(100, 0,27648, 0);
+end 
+set_param(block.BlockHandle, 'UserData', point);
 
 %end Start
 
@@ -163,9 +169,9 @@ block.Dwork(1).Data = connect;
 %%   C-MEX counterpart: mdlOutputs
 %%
 function Outputs(block)
-Sim = get_param(block.Dwork(1).Data, 'UserData');
-ret = Sim.ReadOutputImage(block.DialogPrm(1).Data,1,S7PROSIMLib.ImageDataTypeConstants.S7Word);
-block.OutputPort(1).Data = (ret.double/276.48); 
+Sim = get_param(block.BlockHandle, 'UserData');
+ret = Sim.Value;
+block.OutputPort(1).Data = cast(ret,'double'); 
 
 %end Outputs
 
@@ -189,7 +195,7 @@ function Update(block)
 %%   C-MEX counterpart: mdlTerminate
 %%
 function Terminate(block)
-Sim = get_param(block.BlockHandle, 'UserData');
-delete(Sim);
+point = get_param(block.BlockHandle, 'UserData');
+delete(point);
 %end Terminate
 
