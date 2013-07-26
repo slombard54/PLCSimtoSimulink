@@ -54,8 +54,8 @@ block.OutputPort(1).Complexity  = 'Real';
 block.OutputPort(1).SamplingMode = 'sample';
 
 % Register parameters
-block.NumDialogPrms     = 2;
-block.DialogPrmsTunable = {'Nontunable','Nontunable'};
+block.NumDialogPrms     = 6;
+block.DialogPrmsTunable = {'Nontunable','Nontunable','Nontunable','Nontunable','Nontunable','Nontunable'};
 
 % Register sample times
 %  [0 offset]            : Continuous sample time
@@ -155,7 +155,7 @@ block.Dwork(1).Data = connect;
 Sim = get_param(block.Dwork(1).Data, 'UserData');
 point = Sim.AddDataPoint(block.DialogPrm(1).Data);
 if block.DialogPrm(2).Data == 1
-    point.DataPointScaling(100, 0,27648, 0);
+    point.DataPointScaling(block.DialogPrm(3).Data, block.DialogPrm(4).Data, block.DialogPrm(5).Data, block.DialogPrm(6).Data);
 end 
 set_param(block.BlockHandle, 'UserData', point);
 

@@ -169,6 +169,7 @@ end
 function Start(block)
 Sim = get_param(block.BlockHandle, 'UserData');
 Sim.SimPLC.Connect();
+Sim.SimPLC.SetScanMode(1)
 block.Dwork(1).Data = 0;
 %Sim = get_param(block.BlockHandle, 'UserData');
 
