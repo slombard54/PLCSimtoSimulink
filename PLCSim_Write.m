@@ -1,4 +1,4 @@
-function PLCSim_Connect(block)
+function PLCSim_Write(block)
 %MSFUNTMPL_BASIC A Template for a Level-2 MATLAB S-Function
 %   The MATLAB S-function is written as a MATLAB function with the
 %   same name as the S-function. Replace 'msfuntmpl_basic' with the 
@@ -86,11 +86,12 @@ block.RegBlockMethod('CheckParameters',         @CheckPrms);
 block.RegBlockMethod('ProcessParameters',       @ProcessPrms);
 block.RegBlockMethod('PostPropagationSetup',    @DoPostPropSetup);
 block.RegBlockMethod('InitializeConditions', @InitializeConditions);
-block.RegBlockMethod('Start', @Start);
-%block.RegBlockMethod('Outputs', @Outputs);     % Required
-block.RegBlockMethod('Update', @Update);
-block.RegBlockMethod('Derivatives', @Derivatives);
-block.RegBlockMethod('Terminate', @Terminate); % Required
+if (block.DialogPrm(1).Data ~= '-')
+    block.RegBlockMethod('Start', @Start);
+    %block.RegBlockMethod('Outputs', @Outputs);     % Required
+    block.RegBlockMethod('Update', @Update);
+    block.RegBlockMethod('Terminate', @Terminate); % Required
+end
 
 %end setup
 
@@ -109,13 +110,25 @@ function CheckPrms(block)
 %%   C-Mex counterpart: mdlSetWorkWidths
 %%
 function DoPostPropSetup(block)
-block.NumDworks = 1;
+block.NumDworks = 3;
   
-  block.Dwork(1).Name            = 'x1';
+  block.Dwork(1).Name            = 'ConnHandle';
   block.Dwork(1).Dimensions      = 1;
   block.Dwork(1).DatatypeID      = 0;      % double
   block.Dwork(1).Complexity      = 'Real'; % real
   block.Dwork(1).UsedAsDiscState = true;
+  
+  block.Dwork(2).Name            = 'PreviousData';
+  block.Dwork(2).Dimensions      = 1;
+  block.Dwork(2).DatatypeID      = 0;      % double
+  block.Dwork(2).Complexity      = 'Real'; % real
+  block.Dwork(2).UsedAsDiscState = false;
+  
+  block.Dwork(3).Name            = 'PreviousCount';
+  block.Dwork(3).Dimensions      = 1;
+  block.Dwork(3).DatatypeID      = 0;      % double
+  block.Dwork(3).Complexity      = 'Real'; % real
+  block.Dwork(3).UsedAsDiscState = false;
   
     %% Register all tunable parameters as runtime parameters.
   block.AutoRegRuntimePrms;
@@ -137,7 +150,7 @@ function ProcessPrms(block)
 %%   C-MEX counterpart: mdlInitializeConditions
 %%
 function InitializeConditions(block)
-
+  block.Dwork(2).Data = NaN;
 %end InitializeConditions
 
 
@@ -150,16 +163,19 @@ function InitializeConditions(block)
 %%   C-MEX counterpart: mdlStart
 %%
 function Start(block)
-sys = get_param(gcs, 'Handle');
+sys = get_param(bdroot, 'Handle');
 connect = find_system(sys, 'MaskType','PLCSimConnect');
 block.Dwork(1).Data = connect;
-Sim = get_param(block.Dwork(1).Data, 'UserData');
-point = Sim.AddDataPoint(block.DialogPrm(1).Data);
-if block.DialogPrm(2).Data == 1
-    point.DataPointScaling(block.DialogPrm(3).Data, block.DialogPrm(4).Data, block.DialogPrm(5).Data, block.DialogPrm(6).Data);
-end 
-set_param(block.BlockHandle, 'UserData', point);
-
+try
+    Sim = get_param(block.Dwork(1).Data, 'UserData');
+    point = Sim.AddDataPoint(block.DialogPrm(1).Data);
+    if block.DialogPrm(2).Data == 1
+        point.DataPointScaling(block.DialogPrm(3).Data, block.DialogPrm(4).Data, block.DialogPrm(5).Data, block.DialogPrm(6).Data);
+    end 
+    set_param(block.BlockHandle, 'UserData', point);
+catch
+    set_param(block.BlockHandle,'BackgroundColor','red');
+end
 %end Start
 
 %%
@@ -181,23 +197,26 @@ set_param(block.BlockHandle, 'UserData', point);
 %%   C-MEX counterpart: mdlUpdate
 %%
 function Update(block)
-Sim = get_param(block.BlockHandle, 'UserData');
-Sim.Value = block.InputPort(1).Data;
- 
+try
+    Sim = get_param(block.BlockHandle, 'UserData');
+    newData = block.InputPort(1).Data;
+    oldData = block.Dwork(2).Data;
+    if (newData ~= oldData)
+        Sim.Value = newData;
+        block.Dwork(2).Data = newData;
+    else
+        block.Dwork(3).Data = block.Dwork(3).Data + 1;
+    end
+    if block.Dwork(3).Data > 11
+        block.Dwork(2).Data = NaN;
+        block.Dwork(3).Data = 0;
+    end
+catch
+end
 %block.Dwork(1).Data = block.InputPort(1).Data;
 
 %end Update
 
-%%
-%% Derivatives:
-%%   Functionality    : Called to update derivatives of
-%%                      continuous states during simulation step
-%%   Required         : No
-%%   C-MEX counterpart: mdlDerivatives
-%%
-function Derivatives(block)
-
-%end Derivatives
 
 %%
 %% Terminate:

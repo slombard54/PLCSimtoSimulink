@@ -86,10 +86,14 @@ block.RegBlockMethod('CheckParameters',         @CheckPrms);
 block.RegBlockMethod('ProcessParameters',       @ProcessPrms);
 block.RegBlockMethod('PostPropagationSetup',    @DoPostPropSetup);
 block.RegBlockMethod('InitializeConditions', @InitializeConditions);
-block.RegBlockMethod('Start', @Start);
-block.RegBlockMethod('Outputs', @Outputs);     % Required
-block.RegBlockMethod('Update', @Update);
-block.RegBlockMethod('Terminate', @Terminate); % Required
+if (block.DialogPrm(1).Data ~= '-')
+    block.RegBlockMethod('Start', @Start);
+    block.RegBlockMethod('Outputs', @Outputs);     % Required
+    block.RegBlockMethod('Update', @Update);    
+    block.RegBlockMethod('Terminate', @Terminate); % Required
+end
+
+
 
 %end setup
 
@@ -149,15 +153,19 @@ function InitializeConditions(block)
 %%   C-MEX counterpart: mdlStart
 %%
 function Start(block)
-sys = get_param(gcs, 'Handle');
+sys = get_param(bdroot, 'Handle');
 connect = find_system(sys, 'MaskType','PLCSimConnect');
 block.Dwork(1).Data = connect;
 Sim = get_param(block.Dwork(1).Data, 'UserData');
-point = Sim.AddDataPoint(block.DialogPrm(1).Data);
-if block.DialogPrm(2).Data == 1
-    point.DataPointScaling(block.DialogPrm(3).Data, block.DialogPrm(4).Data, block.DialogPrm(5).Data, block.DialogPrm(6).Data);
-end 
-set_param(block.BlockHandle, 'UserData', point);
+try
+    point = Sim.AddDataPoint(block.DialogPrm(1).Data);
+    if block.DialogPrm(2).Data == 1
+        point.DataPointScaling(block.DialogPrm(3).Data, block.DialogPrm(4).Data, block.DialogPrm(5).Data, block.DialogPrm(6).Data);
+    end 
+    set_param(block.BlockHandle, 'UserData', point);
+catch
+    set_param(block.BlockHandle,'BackgroundColor','red');
+end
 
 %end Start
 
@@ -169,10 +177,12 @@ set_param(block.BlockHandle, 'UserData', point);
 %%   C-MEX counterpart: mdlOutputs
 %%
 function Outputs(block)
-Sim = get_param(block.BlockHandle, 'UserData');
-ret = Sim.Value;
-block.OutputPort(1).Data = cast(ret,'double'); 
-
+try
+    Sim = get_param(block.BlockHandle, 'UserData');
+    ret = Sim.Value;
+    block.OutputPort(1).Data = cast(ret,'double'); 
+catch
+end
 %end Outputs
 
 %%
