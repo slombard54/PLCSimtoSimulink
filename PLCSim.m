@@ -43,8 +43,6 @@ else
 end
 % End initialization code - DO NOT EDIT
 
-NET.addAssembly ('C:\Users\slombard.KINGDOM\Documents\Visual Studio 2010\Projects\PLCSimConnector\PLCSimConnector\bin\Debug\PLCSimConnector.dll');
-
 
 % --- Executes just before PLCSim is made visible.
 function PLCSim_OpeningFcn(hObject, eventdata, handles, varargin)
@@ -56,15 +54,35 @@ function PLCSim_OpeningFcn(hObject, eventdata, handles, varargin)
 
 % Choose default command line output for PLCSim
 handles.output = hObject;
-sys = get_param(gcs, 'Handle');
+%sys = get_param(gcs, 'Handle');
+sys = get_param(bdroot, 'Handle');
+%connect = find_system(sys, 'MaskType','PLCSimConnect');
+%projPath = get_param(connect, 'projectFile');
+%proj = PLCSimConnector.PCS7Project(projPath);
 connect = find_system(sys, 'MaskType','PLCSimConnect');
-projPath = get_param(connect, 'projectFile');
-proj = PLCSimConnector.PCS7Project(projPath);
+sim = get_param(connect, 'UserData');
+proj = sim.Project;
 handles.project = proj;
 % Update handles structure
 guidata(hObject, handles);
 
-set (handles.popupmenu1, 'String', transpose(cell(proj.GetOutputImageSymbols())));
+list = transpose(cell(proj.GetDataSymbols()));
+set (handles.popupmenu1, 'String', list);
+% Is PLCSim Block?
+actBlockType = get_param (gcb, 'Masktype');
+
+if strncmp(actBlockType,'PLCSim', 6)
+    point = get_param (gcb, 'point');
+    valIndex = find(strcmp(point,list));
+    set (handles.popupmenu1, 'Value', valIndex);
+    entry = proj.PCS7SymbolTable.GetEntryFromSymbol(point);
+    set(handles.addressText, 'String', char(entry.OperandIEC));
+    set(handles.dataTypeText, 'String', char(entry.DataType));
+    set(handles.descriptionText, 'String', char(entry.Comment));
+else
+    error 'Active Block is not a valid PLCSim library block';
+end
+
 % UIWAIT makes PLCSim wait for user response (see UIRESUME)
 % uiwait(handles.figure1);
 
@@ -93,7 +111,6 @@ proj = handles.project;
 contents = cellstr(get(hObject,'String'));
 v = contents{get(hObject,'Value')};
 entry = proj.PCS7SymbolTable.GetEntryFromSymbol(v);
-v = char(entry.OperandIEC);
 set(handles.addressText, 'String', char(entry.OperandIEC));
 set(handles.dataTypeText, 'String', char(entry.DataType));
 set(handles.descriptionText, 'String', char(entry.Comment));
